@@ -1,0 +1,9 @@
+{
+    "yaml.schemas": {
+        "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible.json#/$defs/playbook": [
+            "file:///home/lollen/projects/kubehardway/ilovenanoplays.yaml",
+            "file:///home/lollen/projects/kubehardway/testplays.yml"
+        ],
+        "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/inventory.json": "file:///home/lollen/projects/kubehardway/inventory.yml"
+    }
+}

@@ -1,0 +1,153 @@
+- hosts: workers
+  become: true
+  tasks:
+  - name: "delete files"
+    file:
+      state: absent
+      path: /tmp
+      force: true
+  - name: "create dir"
+    file:
+      path: /tmp
+      state: directory
+      owner: root
+      group: root
+      mode: "0700"
+      force: true
+  - name: "Copy netconf {{ item }}"
+    ansible.builtin.copy:
+      src: "configs/{{ item }}"
+      dest: "/etc/cni/net.d/"
+      mode: 0700
+    with_items:
+      - 99-loopback.conf
+      - 10-bridge.conf
+
+  - name: "Download binaries {{ item }}"
+    ansible.builtin.get_url:
+      url: "{{ item }}"
+      dest: "/tmp"
+      mode: 0600
+    with_items:
+      - https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.26.0/crictl-v1.26.0-linux-amd64.tar.gz
+      - https://github.com/opencontainers/runc/releases/download/v1.1.4/runc.amd64
+      - https://github.com/containernetworking/plugins/releases/download/v1.1.1/cni-plugins-linux-amd64-v1.1.1.tgz
+      - https://github.com/containerd/containerd/releases/download/v1.6.15/containerd-1.6.15-linux-amd64.tar.gz
+      - https://storage.googleapis.com/kubernetes-release/release/v1.26.0/bin/linux/amd64/kubectl
+      - https://storage.googleapis.com/kubernetes-release/release/v1.26.0/bin/linux/amd64/kube-proxy
+      - https://storage.googleapis.com/kubernetes-release/release/v1.26.0/bin/linux/amd64/kubelet
+
+  - name: "Make dir {{ item }}"
+    file:
+      path: "{{ item }}"
+      state: directory
+      owner: root
+      group: root
+      mode: 0700
+      force: true
+    with_items:
+      - /etc/cni/net.d
+      - /opt/cni/bin
+      - /var/lib/kubelet
+      - /var/lib/kube-proxy
+      - /var/lib/kubernetes
+      - /var/run/kubernetes
+      - /tmp/containerd
+      - /etc/containerd
+
+  - name: "Unpack binaries {{ item }}"
+    ansible.builtin.unarchive:
+      remote_src: true
+      src: "/tmp/{{ item.file }}"
+      dest: "{{ item.dest }}"
+    with_items:
+      - {file: "crictl-v1.26.0-linux-amd64.tar.gz", dest: "/usr/local/bin/"}
+      - {file: "cni-plugins-linux-amd64-v1.1.1.tgz", dest: "/opt/cni/bin/"}
+      - {file: "containerd-1.6.15-linux-amd64.tar.gz", dest: "/tmp/containerd"}
+  - name: "Copy containerd binaries {{ item }}"
+    ansible.builtin.copy:
+      src: "/tmp/containerd/bin/{{ item }}"
+      remote_src: true
+      dest: "/bin/{{ item }}"
+      mode: a+x
+    with_items:
+      - "containerd"
+      - "containerd-shim"
+      - "containerd-shim-runc-v1"
+      - "containerd-shim-runc-v2"
+      - "containerd-stress"
+      - "ctr"
+
+  - name: "Rename files {{ item }}"
+    ansible.builtin.copy:
+      src: "/tmp/{{ item.file }}"
+      remote_src: true
+      dest: "/tmp/{{ item.dest }}"
+      mode: a+x
+    with_items:
+      - {file: "runc.amd64", dest: "runc"}
+
+  - name: "Copy kube binaries #1 {{ item }}"
+    ansible.builtin.copy:
+      src: "/tmp/{{ item }}"
+      remote_src: true
+      dest: "/usr/local/bin/{{ item }}"
+      mode: a+x
+    with_items:
+      - "kubectl"
+      - "kube-proxy"
+      - "kubelet"
+      - "runc"
+  - name: "Copy configs to workers {{ item.file }}"
+    tags: test
+    ansible.builtin.copy:
+      src: "configs/{{ item.file }}"
+      dest: "{{ item.dest }}"
+      force: true
+      mode: "0700"
+    with_items:
+      - {file: "containerdconfig.toml", dest: "/etc/containerd/config.toml"}
+      - {file: "containerd.service", dest: "/etc/systemd/system/containerd.service"}
+      - {file: "kubeconfigs/{{ inventory_hostname_short }}-kubelet-config.yaml", dest: "/var/lib/kubelet/kubelet-config.yaml"}
+      - {file: "kubeconfigs/{{ inventory_hostname_short }}.kubeconfig", dest: "/var/lib/kubelet/kubeconfig"}
+      - {file: "kubeconfigs/kube-proxy.kubeconfig", dest: "/var/lib/kube-proxy/kubeconfig"}
+      - {file: "kube-proxy-config.yaml", dest: "/var/lib/kube-proxy/kube-proxy-config.yaml"}
+      - {file: "kube-proxy.service", dest: "/etc/systemd/system/kube-proxy.service"}
+      - {file: "kubelet.service", dest: "/etc/systemd/system/kubelet.service"}
+
+  - name: "Copy certs to workers {{ item }}"
+    tags: test
+    ansible.builtin.copy:
+      src: "{{ item.file }}"
+      dest: "{{ item.dest }}"
+      force: true
+      mode: "0700"
+    with_items:
+      - {file: "ca/certs/{{ inventory_hostname_short }}.crt", dest: "/var/lib/kubelet/{{ inventory_hostname_short }}.crt"}
+      - {file: "ca/certs/{{ inventory_hostname_short }}.key", dest: "/var/lib/kubelet/{{ inventory_hostname_short }}.key"}
+      - {file: "ca/certs/ca.crt", dest: "/var/lib/kubernetes/ca.crt"}
+
+  - name: "Just force systemd to reread configs (2.4 and above)"
+    tags: test
+    ansible.builtin.systemd:
+      daemon_reload: true
+
+  - name: "Enable service {{ item }} and ensure it is not masked"
+    ansible.builtin.systemd:
+      name: "{{ item }}"
+      enabled: true
+      masked: false
+    with_items:
+      - "containerd"
+      - "kubelet"
+      - "kube-proxy"
+
+  - name: Run {{ item }}
+    ansible.builtin.systemd:
+      name: "{{ item }}"
+      state: started
+      scope: system
+    with_items:
+      - "containerd"
+      - "kubelet"
+      - "kube-proxy"

@@ -1,0 +1,70 @@
+- hosts: masters
+  become: true
+  tasks:
+    - name: "Download etcd archive"
+      ansible.builtin.get_url:
+        url: "https://github.com/etcd-io/etcd/releases/download/v3.4.15/etcd-v3.4.15-linux-amd64.tar.gz"
+        dest: "/tmp"
+        mode: 0600
+    - name: Extract etcd
+      ansible.builtin.unarchive:
+        remote_src: true
+        src: "/tmp/etcd-v3.4.15-linux-amd64.tar.gz"
+        dest: "/tmp"
+    - name: Copy etcd binary to destination directory
+      ansible.builtin.copy:
+        src: "/tmp/etcd-v3.4.15-linux-amd64/etcd"
+        dest: "/usr/local/bin/etcd"
+        mode: "0700"
+        owner: "root"
+        group: "root"
+        remote_src: true
+
+    - name: "Create etcd directory"
+      file:
+        path: /etc/etcd
+        state: directory
+        owner: root
+        group: root
+        mode: 0700
+        force: true
+    - name: "Copy CA cert"
+      ansible.builtin.copy:
+        src: "ca/certs/ca.crt"
+        dest: "/etc/etcd/"
+        mode: 0700
+    - name: "Copy api cert"
+      ansible.builtin.copy:
+        src: "ca/certs/kubernetes.crt"
+        dest: "/etc/etcd/"
+        mode: 0700
+    - name: "Copy api key"
+      ansible.builtin.copy:
+        src: "ca/certs/kubernetes.key"
+        dest: "/etc/etcd/"
+        mode: "0700"
+    - name: "Copy etcd.service"
+      ansible.builtin.copy:
+        src: "configs/kubeconfigs/{{ inventory_hostname_short }}-etcd.service"
+        dest: "/etc/systemd/system/etcd.service"
+        mode: "0644"
+      notify:
+        - Restart etcd
+    - name: Just force systemd to reread configs (2.4 and above)
+      ansible.builtin.systemd:
+        daemon_reload: true
+    - name: Enable service ETCD and ensure it is not masked
+      ansible.builtin.systemd:
+        name: etcd
+        enabled: true
+        masked: false
+    - name: Run ETCD
+      ansible.builtin.systemd:
+        name: etcd
+        state: started
+        scope: system
+  handlers:
+    - name: Restart etcd
+      ansible.builtin.systemd:
+        name: etcd
+        state: restarted

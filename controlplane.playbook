@@ -1,0 +1,164 @@
+- hosts: masters
+  become: true
+  tasks:
+    - name: "Download kube-apiserver"
+      ansible.builtin.get_url:
+        url: "https://storage.googleapis.com/kubernetes-release/release/v1.26.0/bin/linux/amd64/kube-apiserver"
+        dest: "/usr/local/bin/"
+        mode: 0700
+    - name: "Download kube-controller-manager"
+      ansible.builtin.get_url:
+        url: "https://storage.googleapis.com/kubernetes-release/release/v1.26.0/bin/linux/amd64/kube-controller-manager"
+        dest: "/usr/local/bin/"
+        mode: 0700
+    - name: "Download kube-scheduler"
+      ansible.builtin.get_url:
+        url: "https://storage.googleapis.com/kubernetes-release/release/v1.26.0/bin/linux/amd64/kube-scheduler"
+        dest: "/usr/local/bin/"
+        mode: 0700
+    - name: "Download kubectl"
+      ansible.builtin.get_url:
+        url: "https://storage.googleapis.com/kubernetes-release/release/v1.26.0/bin/linux/amd64/kubectl"
+        dest: "/usr/local/bin/"
+        mode: 0700
+    - name: "Create kubernetes directory"
+      file:
+        path: /var/lib/kubernetes
+        state: directory
+        owner: root
+        group: root
+        mode: 0700
+        force: true
+    - name: "Create kubernetes etc directory"
+      file:
+        path: /etc/kubernetes
+        state: directory
+        owner: root
+        group: root
+        mode: 0700
+        force: true
+    - name: "Create kubernetes etc config directory"
+      file:
+        path: /etc/kubernetes/config
+        state: directory
+        owner: root
+        group: root
+        mode: 0700
+        force: true
+    - name: "Copy CA cert"
+      ansible.builtin.copy:
+        src: "ca/certs/ca.crt"
+        dest: "/var/lib/kubernetes/"
+        mode: "0700"
+    - name: "Copy CA key"
+      ansible.builtin.copy:
+        src: "ca/certs/ca.key"
+        dest: "/var/lib/kubernetes/"
+        mode: "0700"
+    - name: "Copy Kubernetes cert"
+      ansible.builtin.copy:
+        src: "ca/certs/kubernetes.crt"
+        dest: "/var/lib/kubernetes/"
+        mode: "0700"
+    - name: "Copy Kubernetes cert"
+      ansible.builtin.copy:
+        src: "ca/certs/kubernetes.crt"
+        dest: "/var/lib/kubernetes/"
+        mode: "0700"
+    - name: "Copy Kubernetes key"
+      ansible.builtin.copy:
+        src: "ca/certs/kubernetes.key"
+        dest: "/var/lib/kubernetes/"
+        mode: "0700"
+    - name: "Copy Service Account cert"
+      ansible.builtin.copy:
+        src: "ca/certs/service-account.crt"
+        dest: "/var/lib/kubernetes/"
+        mode: "0700"
+    - name: "Copy Service Account key"
+      ansible.builtin.copy:
+        src: "ca/certs/service-account.key"
+        dest: "/var/lib/kubernetes/"
+        mode: "0700"
+    - name: "Copy encryption config"
+      ansible.builtin.copy:
+        src: "configs/kubeconfigs/encryption-config.yaml"
+        dest: "/var/lib/kubernetes/"
+        mode: "0700"
+
+    - name: "Copy kube-apiserver.service"
+      ansible.builtin.copy:
+        src: "configs/kubeconfigs/{{ inventory_hostname_short }}-kube-apiserver.service"
+        dest: "/etc/systemd/system/kube-apiserver.service"
+        mode: "0644"
+      notify:
+        - Restart kube-apiserver
+# Kube controller manager
+    - name: "Copy kube-controller-manager kubeconfig"
+      ansible.builtin.copy:
+        src: "configs/kubeconfigs/kube-controller-manager.kubeconfig"
+        dest: "/var/lib/kubernetes/"
+        mode: "0700"
+    - name: "Copy kube-controller-manager.service"
+      ansible.builtin.copy:
+        src: "configs/kubeconfigs/{{ inventory_hostname_short }}-kube-controller-manager.service"
+        dest: "/etc/systemd/system/kube-controller-manager.service"
+        mode: "0644"
+
+## Kube Scheduler
+    - name: "Copy kube-scheduler yaml"
+      ansible.builtin.copy:
+        src: "configs/kubeconfigs/{{ inventory_hostname_short }}-kube-scheduler.yaml"
+        dest: "/etc/kubernetes/config/kube-scheduler.yaml"
+        mode: "0700"
+    - name: "Copy kube-scheduler kubeconfig"
+      ansible.builtin.copy:
+        src: "configs/kubeconfigs/kube-scheduler.kubeconfig"
+        dest: "/var/lib/kubernetes/"
+        mode: "0700"
+    - name: "Copy kube-scheduler.service"
+      ansible.builtin.copy:
+        src: "configs/kubeconfigs/{{ inventory_hostname_short }}-kube-scheduler.service"
+        dest: "/etc/systemd/system/kube-scheduler.service"
+        mode: "0644"
+
+
+    - name: Just force systemd to reread configs (2.4 and above)
+      ansible.builtin.systemd:
+        daemon_reload: true
+    - name: Enable service kube-apiserver and ensure it is not masked
+      ansible.builtin.systemd:
+        name: kube-apiserver
+        enabled: true
+        masked: false
+    - name: Run kube-apiserver
+      ansible.builtin.systemd:
+        name: kube-apiserver
+        state: started
+        scope: system
+    - name: Enable service kube-controller-manager and ensure it is not masked
+      ansible.builtin.systemd:
+        name: kube-controller-manager
+        enabled: true
+        masked: false
+    - name: Run kube-controller-manager
+      ansible.builtin.systemd:
+        name: kube-controller-manager
+        state: started
+        scope: system
+
+    - name: Enable service kube-scheduler and ensure it is not masked
+      ansible.builtin.systemd:
+        name: kube-scheduler
+        enabled: true
+        masked: false
+    - name: Run kube-scheduler
+      ansible.builtin.systemd:
+        name: kube-scheduler
+        state: started
+        scope: system
+  handlers:
+    - name: Restart kube-apiserver
+      ansible.builtin.systemd:
+        name: kube-apiserver
+        state: restarted

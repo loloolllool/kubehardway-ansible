@@ -1,0 +1,25 @@
+- hosts: loadbalancers
+  become: true
+  tasks:
+  - name: Install nginx
+    apt:
+      name: nginx
+      state: present
+  - name: "Copy nginxconfig"
+    ansible.builtin.copy:
+      src: "configs/nginx.conf"
+      dest: "/etc/nginx/modules-enabled/kubernetes.conf"
+      mode: 0700
+  - name: Just force systemd to reread configs (2.4 and above)
+    ansible.builtin.systemd:
+      daemon_reload: true
+  - name: Enable service nginx and ensure it is not masked
+    ansible.builtin.systemd:
+      name: nginx
+      enabled: true
+      masked: false
+  - name: Run nginx
+    ansible.builtin.systemd:
+      name: nginx
+      state: restarted
+      scope: system

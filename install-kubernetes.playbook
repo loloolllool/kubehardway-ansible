@@ -1,0 +1,4 @@
+- import_playbook: etcd.playbook
+- import_playbook: controlplane.playbook
+- import_playbook: loadbalancers.playbook
+- import_playbook: workernodes.playbook

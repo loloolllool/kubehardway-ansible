@@ -1,0 +1,14 @@
+[masters]
+master-1.kubelab
+master-2.kubelab
+master-3.kubelab
+[workers]
+worker-1.kubelab
+worker-2.kubelab
+worker-3.kubelab
+worker-4.kubelab
+worker-5.kubelab
+worker-6.kubelab
+[loadbalancers]
+lb-1.kubelab
+lb-2.kubelab

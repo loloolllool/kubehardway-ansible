@@ -1,0 +1,16 @@
+{
+    "CN": "admin",
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+        {
+            "C": "SE",
+            "L": "Internet",
+            "O": "system:masters",
+            "OU": "Labs",
+            "ST": "lolcathost"
+        }
+    ]
+}
