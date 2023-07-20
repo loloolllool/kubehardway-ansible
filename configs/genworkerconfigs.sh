@@ -14,9 +14,10 @@ authentication:
 authorization:
   mode: Webhook
 clusterDomain: "cluster.local"
+cgroupDriver: systemd
 clusterDNS:
   - "10.32.0.10"
-podCIDR: "172.16.0.0/16"
+podCidr: "172.16.0.0/16"
 resolvConf: "/run/systemd/resolve/resolv.conf"
 runtimeRequestTimeout: "15m"
 tlsCertFile: "/var/lib/kubelet/${machine}.crt"

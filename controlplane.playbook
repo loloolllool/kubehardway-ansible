@@ -1,6 +1,16 @@
 - hosts: masters
   become: true
   tasks:
+    - name: "Stop Services"
+      ignore_errors: true
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: stopped
+        scope: system
+      with_items:
+        - "kube-scheduler"
+        - "kube-proxy"
+        - "kube-controller-manager"
     - name: "Download kube-apiserver"
       ansible.builtin.get_url:
         url: "https://storage.googleapis.com/kubernetes-release/release/v1.26.0/bin/linux/amd64/kube-apiserver"

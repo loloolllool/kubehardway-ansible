@@ -45,7 +45,7 @@ function kubeproxyconfig() {
 }
 function generatecontrollermanagerconfig() {
     kubectl config set-cluster kubernetes-the-hard-way \
-        --certificate-authority="../ca/certs/kube-proxy.crt" \
+        --certificate-authority="../ca/certs/ca.crt" \
         --embed-certs=true \
         --server=https://127.0.0.1:6443 \
         --kubeconfig="kubeconfigs/kube-controller-manager.kubeconfig"
@@ -65,7 +65,7 @@ function generatecontrollermanagerconfig() {
 }
 function generateschedulerconfig() {
     kubectl config set-cluster kubernetes-the-hard-way \
-        --certificate-authority="../ca/certs/kube-proxy.crt" \
+        --certificate-authority="../ca/certs/ca.crt" \
         --embed-certs=true \
         --server=https://127.0.0.1:6443 \
         --kubeconfig="kubeconfigs/kube-scheduler.kubeconfig"

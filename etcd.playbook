@@ -1,6 +1,12 @@
 - hosts: masters
   become: true
   tasks:
+    - name: "Stop ETCD"
+      ignore_errors: true
+      ansible.builtin.systemd:
+        name: etcd
+        state: stopped
+        scope: system
     - name: "Download etcd archive"
       ansible.builtin.get_url:
         url: "https://github.com/etcd-io/etcd/releases/download/v3.4.15/etcd-v3.4.15-linux-amd64.tar.gz"
@@ -19,7 +25,11 @@
         owner: "root"
         group: "root"
         remote_src: true
-
+    - name: "delete files"
+      file:
+        state: absent
+        path: /etc/etcd
+        force: true
     - name: "Create etcd directory"
       file:
         path: /etc/etcd

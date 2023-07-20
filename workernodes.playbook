@@ -1,6 +1,24 @@
 - hosts: workers
   become: true
   tasks:
+  - name: "Stop Services"
+    ignore_errors: true
+    tags: test
+    ansible.builtin.systemd:
+      name: "{{ item }}"
+      state: stopped
+      scope: system
+    with_items:
+      - "containerd"
+      - "kubelet"
+      - "kube-proxy"
+  - name: "ip forwarding"
+    sysctl:
+      name: net.ipv4.conf.all.forwarding
+      value: 1
+      state: present
+      reload: yes
+      ignoreerrors: yes
   - name: "delete files"
     file:
       state: absent
@@ -15,6 +33,7 @@
       mode: "0700"
       force: true
   - name: "Copy netconf {{ item }}"
+    tags: netconf
     ansible.builtin.copy:
       src: "configs/{{ item }}"
       dest: "/etc/cni/net.d/"
@@ -107,6 +126,7 @@
       mode: "0700"
     with_items:
       - {file: "containerdconfig.toml", dest: "/etc/containerd/config.toml"}
+      - {file: "crictl.yaml", dest: "/etc/crictl.yaml"}
       - {file: "containerd.service", dest: "/etc/systemd/system/containerd.service"}
       - {file: "kubeconfigs/{{ inventory_hostname_short }}-kubelet-config.yaml", dest: "/var/lib/kubelet/kubelet-config.yaml"}
       - {file: "kubeconfigs/{{ inventory_hostname_short }}.kubeconfig", dest: "/var/lib/kubelet/kubeconfig"}
@@ -116,7 +136,6 @@
       - {file: "kubelet.service", dest: "/etc/systemd/system/kubelet.service"}
 
   - name: "Copy certs to workers {{ item }}"
-    tags: test
     ansible.builtin.copy:
       src: "{{ item.file }}"
       dest: "{{ item.dest }}"
@@ -133,6 +152,7 @@
       daemon_reload: true
 
   - name: "Enable service {{ item }} and ensure it is not masked"
+    tags: test
     ansible.builtin.systemd:
       name: "{{ item }}"
       enabled: true
@@ -143,6 +163,7 @@
       - "kube-proxy"
 
   - name: Run {{ item }}
+    tags: test
     ansible.builtin.systemd:
       name: "{{ item }}"
       state: started

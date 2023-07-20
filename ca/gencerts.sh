@@ -74,25 +74,7 @@ function generateallworkercerts() {
         generateworkercert "${instance}"
     done
 }
-# function generateapicert() {
-#     local instance="$1"
 
-#     local KUBERNETES_PUBLIC_ADDRESS=$(nslookup "$instance.kubelab" | grep "Address: " | awk '{print $2}')
-#     local KUBERNETES_HOSTNAMES=kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local
-
-#     # echo "$EXTERNAL_IP"
-#     cfssl gencert \
-#         -ca=certs/ca.crt \
-#         -ca-key=certs/ca.key \
-#         -config=ca-config.json \
-#         -hostname="10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES},${instance}.kubelab" \
-#         -profile=kubernetes \
-#         "kube-apiserver-csr.json" | cfssljson -bare "apiserver-${instance}"
-#     mkdir -p certs
-#     mv "apiserver-${instance}.pem" "certs/apiserver-${instance}.crt"
-#     mv "apiserver-${instance}-key.pem" "certs/apiserver-${instance}.key"
-#     rm -f "apiserver-${instance}.csr"
-# }
 function generatefullapicert() {
     myecho "Generate kube-api certs"
     local loadbalancerhostname=kubernetes.kubelab
@@ -110,13 +92,12 @@ function generatefullapicert() {
     hostnamesstring=$(echo "${hostnames[*]}" | tr ' ' ',')
     ip_addressesstring=$(echo "${ip_addresses[*]}" | tr ' ' ',')
     # ip_addressesstring=($(echo "${ipaddresses[*]}" | tr ' ' ','))
-    # echo "10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,${ip_addressesstring},127.0.0.1,${KUBERNETES_HOSTNAMES},${hostnamesstring}"
 
     cfssl gencert \
         -ca=certs/ca.crt \
         -ca-key=certs/ca.key \
         -config=ca-config.json \
-        -hostname="10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,${ip_addressesstring},127.0.0.1,${loadbalancerhostname},${KUBERNETES_HOSTNAMES},${hostnamesstring}" \
+        -hostname="10.32.0.1,${ip_addressesstring},127.0.0.1,${loadbalancerhostname},${KUBERNETES_HOSTNAMES},${hostnamesstring}" \
         -profile=kubernetes \
         "kubernetes-csr.json" | cfssljson -bare "kubernetes"
     mkdir -p certs

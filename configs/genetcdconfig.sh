@@ -32,7 +32,7 @@ ExecStart=/usr/local/bin/etcd \\
   --client-cert-auth \\
   --initial-advertise-peer-urls https://${internalip}:2380 \\
   --listen-peer-urls https://${internalip}:2380 \\
-  --listen-client-urls https://${internalip}:2379,https://127.0.0.1:2379 \\
+  --listen-client-urls https://0.0.0.0:2379 \\
   --advertise-client-urls https://${internalip}:2379 \\
   --initial-cluster-token etcd-cluster-0 \\
   --initial-cluster $initialclusterstring \\
@@ -46,6 +46,8 @@ WantedBy=multi-user.target
 EOF
 
 }
+#   --listen-client-urls https://${internalip}:2379,https://127.0.0.1:2379 \\
+
 
 for instance in master-1 master-2 master-3; do
     generateetcdconfigforinstance "$instance"
